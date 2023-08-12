@@ -8,33 +8,45 @@
 #endif
 
 #include "Buzzer.h"
+#include "DistanceMeasurer.h"
+#include "Utils.h"
 
 #define HEARTBEAT_INTERVAL 1000
 
-#define DISTANCE_SENSOR_PIN_TRIG 2
-#define DISTANCE_SENSOR_PIN_ECHO 3
-#define DISTANCE_SENSOR_MAX_DISTANCE_IN_CM 200
-#define DISTANCE_SENSOR_MEASUREMENT_INTERVAL_IN_MS 250
+#define DISTANCE_MEASURER_TRIGGER_PIN 2
+#define DISTANCE_MEASURER_ECHO_PIN 3
+#define DISTANCE_MEASURER_MAX_DISTANCE_IN_CENTIMETERS 200
+#define DISTANCE_MEASURER_NUMBER_OF_DISTANCE_MEASUREMENTS_TO_TRACK_FOR_AVERAGE 5
+#define DISTANCE_MEASURER_NUMBER_OF_DISTANCE_MEASUREMENTS_TO_TRACK_FOR_STABILITY 5
+#define DISTANCE_MEASURER_DISTANCE_MEASUREMENTS_INTERVAL_IN_MS_FOR_AVERAGE 50
+#define DISTANCE_MEASURER_DISTANCE_MEASUREMENTS_INTERVAL_IN_MS_FOR_STABILITY 250
+#define DISTANCE_MEASURER_MAX_DISTANCE_MEASUREMENT_STANDARD_DEVIATION_FOR_STABILITY 1
+#define DISTANCE_MEASURER_MAX_AVERAGE_SPEED_IN_CENTIMETERS_PER_SECOND_FOR_STABILITY 0.5
 
 #define BUZZER_PIN 4
-#define BUZZER_MAX_DISTANCE_TO_ALERT_IN_CM 100
 
 #define LED_PIN 5
 #define LED_NUM_PIXELS 8
 #define LED_DELAYVAL 500
 
+#define ALERT_MAX_DISTANCE 100
+#define ALERT_INTERVAL_IN_MS_TO_UPDATE_STATUS 250
 
 unsigned long heartbeatPreviousMillis = 0;
-unsigned long distanceSensorMeasurementPreviousMillis = 0;
-
-float currentDistanceInCm = 0;
+unsigned long distanceStatusUpdatePreviousMillis = 0;
 
 Buzzer buzzer(BUZZER_PIN);
 
-UltraSonicDistanceSensor distanceSensor(
-  DISTANCE_SENSOR_PIN_TRIG,
-  DISTANCE_SENSOR_PIN_ECHO,
-  DISTANCE_SENSOR_MAX_DISTANCE_IN_CM);
+DistanceMeasurer distanceMeasurer(
+  DISTANCE_MEASURER_TRIGGER_PIN,
+  DISTANCE_MEASURER_ECHO_PIN,
+  DISTANCE_MEASURER_MAX_DISTANCE_IN_CENTIMETERS,
+  DISTANCE_MEASURER_NUMBER_OF_DISTANCE_MEASUREMENTS_TO_TRACK_FOR_AVERAGE,
+  DISTANCE_MEASURER_NUMBER_OF_DISTANCE_MEASUREMENTS_TO_TRACK_FOR_STABILITY,
+  DISTANCE_MEASURER_DISTANCE_MEASUREMENTS_INTERVAL_IN_MS_FOR_AVERAGE,
+  DISTANCE_MEASURER_DISTANCE_MEASUREMENTS_INTERVAL_IN_MS_FOR_STABILITY,
+  DISTANCE_MEASURER_MAX_DISTANCE_MEASUREMENT_STANDARD_DEVIATION_FOR_STABILITY,
+  DISTANCE_MEASURER_MAX_AVERAGE_SPEED_IN_CENTIMETERS_PER_SECOND_FOR_STABILITY);
 
 Adafruit_NeoPixel pixels(LED_NUM_PIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -48,7 +60,7 @@ void setup() {
 
   pixels.begin();
 
-  buzzer.alertInitialization();
+  // buzzer.alertInitialization();
 
   Serial.println("Inicialização finalizada");
 }
@@ -72,18 +84,30 @@ void loop() {
     Serial.println("Heartbeat");
   }
 
-  // atualização da distância
-  if (currentMillis - distanceSensorMeasurementPreviousMillis >= DISTANCE_SENSOR_MEASUREMENT_INTERVAL_IN_MS) {
-    distanceSensorMeasurementPreviousMillis = currentMillis;
+  if (distanceMeasurer.isReady() && currentMillis - distanceStatusUpdatePreviousMillis > ALERT_INTERVAL_IN_MS_TO_UPDATE_STATUS) {
+    distanceStatusUpdatePreviousMillis = currentMillis;
 
-    currentDistanceInCm = distanceSensor.measureDistanceCm();
+    float currentDistanceInCentimeters = distanceMeasurer.getDistanceInCentimeters();
 
-    Serial.print("Medição: ");
-    Serial.print(currentDistanceInCm, 2);
-    Serial.println(" cm");
+    Serial.print("Distância: ");
+    Serial.print(currentDistanceInCentimeters, 2);
+    Serial.print(" cm | ");
 
-    if (currentDistanceInCm >= 0 && currentDistanceInCm < BUZZER_MAX_DISTANCE_TO_ALERT_IN_CM) {
-      int buzzerAlertBeatIntervalInMs = getBuzzerAlertBeatIntervalInMsFromDistanceInCm(currentDistanceInCm);
+    float averageSpeedInCentimetersPerSeconds = distanceMeasurer.getAverageSpeedInCentimetersPerSecond();
+
+    Serial.print("Velocidade: ");
+    Serial.print(averageSpeedInCentimetersPerSeconds, 2);
+    Serial.print(" cm/s | ");
+
+    Serial.print("Estável: ");
+    if (distanceMeasurer.isDistanceSteady()) {
+      Serial.println("sim");
+    } else {
+      Serial.println("não");
+    }
+
+    if (currentDistanceInCentimeters >= 0 && currentDistanceInCentimeters < ALERT_MAX_DISTANCE) {
+      int buzzerAlertBeatIntervalInMs = getBuzzerAlertBeatIntervalInMsFromDistanceInCm(currentDistanceInCentimeters);
 
       if (buzzer.isAlerting()) {
         buzzer.setAlertBeatsInterval(buzzerAlertBeatIntervalInMs);
@@ -99,17 +123,20 @@ void loop() {
     }
   }
 
+  distanceMeasurer.synchronize(currentMillis);
   buzzer.synchronize(currentMillis);
 }
 
 int getBuzzerAlertBeatIntervalInMsFromDistanceInCm(float distanceInCm) {
-  if (distanceInCm > 50) {
-    return 1500;
-  } else if (distanceInCm > 25) {
-    return 1000;
-  } else if (distanceInCm > 12.5) {
-    return 500;
+  if (distanceInCm > 60) {
+    return 2500;
+  } else if (distanceInCm > 30) {
+    return 1600;
+  } else if (distanceInCm > 15) {
+    return 800;
+  } else if (distanceInCm > 7.5) {
+    return 400;
   } else {
-    return 250;
+    return 200;
   }
 }
