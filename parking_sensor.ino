@@ -1,15 +1,6 @@
-// https://github.com/Martinsos/arduino-lib-hc-sr04
-#include <HCSR04.h>
-
-// https://github.com/adafruit/Adafruit_NeoPixel
-#include <Adafruit_NeoPixel.h>
-#ifdef __AVR__
-#include <avr/power.h>
-#endif
-
-#include "Buzzer.h"
 #include "DistanceMeasurer.h"
-#include "Utils.h"
+#include "Buzzer.h"
+#include "LedBarStatusReporter.h"
 
 #define HEARTBEAT_INTERVAL 1000
 
@@ -18,24 +9,22 @@
 #define DISTANCE_MEASURER_MAX_DISTANCE_IN_CENTIMETERS 200
 #define DISTANCE_MEASURER_NUMBER_OF_DISTANCE_MEASUREMENTS_TO_TRACK_FOR_AVERAGE 5
 #define DISTANCE_MEASURER_NUMBER_OF_DISTANCE_MEASUREMENTS_TO_TRACK_FOR_STABILITY 5
-#define DISTANCE_MEASURER_DISTANCE_MEASUREMENTS_INTERVAL_IN_MS_FOR_AVERAGE 50
+#define DISTANCE_MEASURER_DISTANCE_MEASUREMENTS_INTERVAL_IN_MS_FOR_AVERAGE 100
 #define DISTANCE_MEASURER_DISTANCE_MEASUREMENTS_INTERVAL_IN_MS_FOR_STABILITY 250
 #define DISTANCE_MEASURER_MAX_DISTANCE_MEASUREMENT_STANDARD_DEVIATION_FOR_STABILITY 1
 #define DISTANCE_MEASURER_MAX_AVERAGE_SPEED_IN_CENTIMETERS_PER_SECOND_FOR_STABILITY 0.5
 
 #define BUZZER_PIN 4
 
-#define LED_PIN 5
-#define LED_NUM_PIXELS 8
-#define LED_DELAYVAL 500
+#define LED_BAR_STATUS_REPORTER_PIN 5
+#define LED_BAR_STATUS_REPORTER_NUMBER_OF_LEDS 8
+#define LED_BAR_STATUS_REPORTER_BRIGHTNESS 8
 
 #define ALERT_MAX_DISTANCE 100
 #define ALERT_INTERVAL_IN_MS_TO_UPDATE_STATUS 250
 
 unsigned long heartbeatPreviousMillis = 0;
 unsigned long distanceStatusUpdatePreviousMillis = 0;
-
-Buzzer buzzer(BUZZER_PIN);
 
 DistanceMeasurer distanceMeasurer(
   DISTANCE_MEASURER_TRIGGER_PIN,
@@ -48,17 +37,20 @@ DistanceMeasurer distanceMeasurer(
   DISTANCE_MEASURER_MAX_DISTANCE_MEASUREMENT_STANDARD_DEVIATION_FOR_STABILITY,
   DISTANCE_MEASURER_MAX_AVERAGE_SPEED_IN_CENTIMETERS_PER_SECOND_FOR_STABILITY);
 
-Adafruit_NeoPixel pixels(LED_NUM_PIXELS, LED_PIN, NEO_GRB + NEO_KHZ800);
+Buzzer buzzer(BUZZER_PIN);
+
+LedBarStatusReporter ledBarStatusReporter(
+  LED_BAR_STATUS_REPORTER_PIN,
+  LED_BAR_STATUS_REPORTER_NUMBER_OF_LEDS,
+  LED_BAR_STATUS_REPORTER_BRIGHTNESS);
 
 void setup() {
   Serial.begin(9600);
   Serial.println("Inicializando");
 
-#if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
-  clock_prescale_set(clock_div_1);
-#endif
+  LedBarStatusReporter::setup();
 
-  pixels.begin();
+  ledBarStatusReporter.begin();
 
   // buzzer.alertInitialization();
 
@@ -66,16 +58,6 @@ void setup() {
 }
 
 void loop() {
-  // pixels.clear();
-
-  // for (int i = 0; i < LED_NUM_PIXELS; i++) {
-
-  //   pixels.setPixelColor(i, pixels.Color(150, 0, 0));
-  //   pixels.setBrightness(32);
-  //   pixels.show();
-  //   delay(LED_DELAYVAL);
-  // }
-
   unsigned long currentMillis = millis();
 
   // heartbeat
@@ -84,6 +66,7 @@ void loop() {
     Serial.println("Heartbeat");
   }
 
+  // status
   if (distanceMeasurer.isReady() && currentMillis - distanceStatusUpdatePreviousMillis > ALERT_INTERVAL_IN_MS_TO_UPDATE_STATUS) {
     distanceStatusUpdatePreviousMillis = currentMillis;
 
@@ -108,17 +91,30 @@ void loop() {
 
     if (currentDistanceInCentimeters >= 0 && currentDistanceInCentimeters < ALERT_MAX_DISTANCE) {
       int buzzerAlertBeatIntervalInMs = getBuzzerAlertBeatIntervalInMsFromDistanceInCm(currentDistanceInCentimeters);
+      unsigned short numberOfLedsToLight = getNumberOfLedsToLightFromDistanceInCm(currentDistanceInCentimeters);
 
       if (buzzer.isAlerting()) {
         buzzer.setAlertBeatsInterval(buzzerAlertBeatIntervalInMs);
       } else {
-        Serial.println("Iniciando alerta sonoro");
-        buzzer.startAlerting(buzzerAlertBeatIntervalInMs);
+        // Serial.println("Iniciando alerta sonoro");
+        // buzzer.startAlerting(buzzerAlertBeatIntervalInMs);
+      }
+
+      if (ledBarStatusReporter.isReportingStatus()) {
+        ledBarStatusReporter.setNumberOfLedsToLight(numberOfLedsToLight);
+      } else {
+        Serial.println("Iniciando alerta visual");
+        ledBarStatusReporter.startReportingStatus(numberOfLedsToLight);
       }
     } else {
       if (buzzer.isAlerting()) {
         Serial.println("Encerrando alerta sonoro");
         buzzer.stopAlerting(currentMillis);
+      }
+
+      if (ledBarStatusReporter.isReportingStatus()) {
+        Serial.println("Encerrando alerta visual");
+        ledBarStatusReporter.stopReportingStatus();
       }
     }
   }
@@ -128,15 +124,21 @@ void loop() {
 }
 
 int getBuzzerAlertBeatIntervalInMsFromDistanceInCm(float distanceInCm) {
-  if (distanceInCm > 60) {
-    return 2500;
-  } else if (distanceInCm > 30) {
-    return 1600;
-  } else if (distanceInCm > 15) {
-    return 800;
-  } else if (distanceInCm > 7.5) {
-    return 400;
-  } else {
-    return 200;
-  }
+  if (distanceInCm > 60) return 2000;
+  else if (distanceInCm > 30) return 1000;
+  else if (distanceInCm > 15) return 500;
+  else if (distanceInCm > 6) return 250;
+  else return 125;
+}
+
+unsigned short getNumberOfLedsToLightFromDistanceInCm(float distanceInCm) {
+  if (distanceInCm > 100) return 0;
+  else if (distanceInCm > 75) return 1;
+  else if (distanceInCm > 50) return 2;
+  else if (distanceInCm > 25) return 3;
+  else if (distanceInCm > 20) return 4;
+  else if (distanceInCm > 15) return 5;
+  else if (distanceInCm > 10) return 6;
+  else if (distanceInCm > 6) return 7;
+  else return 8;
 }

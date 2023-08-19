@@ -143,7 +143,7 @@ bool DistanceMeasurer::isDistanceSteady() {
     _getAverageSpeedInCentimetersPerSecondInStabilityTrackWindow();
 
   return distanceMeasurementsStandardDeviation < _maxDistanceMeasurementStandardDeviationForStability
-         && averageSpeedInCentimetersPerSecondInStabilityTrackWindow < _maxAverageSpeedInCentimetersPerSecondForStability;
+         && abs(averageSpeedInCentimetersPerSecondInStabilityTrackWindow) < _maxAverageSpeedInCentimetersPerSecondForStability;
 }
 
 float DistanceMeasurer::_getAverageSpeedInCentimetersPerSecondInStabilityTrackWindow() {
