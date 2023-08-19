@@ -17,8 +17,9 @@
 #define BUZZER_PIN 4
 
 #define LED_BAR_STATUS_REPORTER_PIN 5
-#define LED_BAR_STATUS_REPORTER_NUMBER_OF_LEDS 8
+#define LED_BAR_STATUS_REPORTER_TOTAL_NUMBER_OF_LEDS 8
 #define LED_BAR_STATUS_REPORTER_BRIGHTNESS 8
+#define LED_BAR_STATUS_REPORTER_BLINK_INTERVAL_IN_MILLISECONDS 350
 
 #define ALERT_MAX_DISTANCE 100
 #define ALERT_INTERVAL_IN_MS_TO_UPDATE_STATUS 250
@@ -41,7 +42,7 @@ Buzzer buzzer(BUZZER_PIN);
 
 LedBarStatusReporter ledBarStatusReporter(
   LED_BAR_STATUS_REPORTER_PIN,
-  LED_BAR_STATUS_REPORTER_NUMBER_OF_LEDS,
+  LED_BAR_STATUS_REPORTER_TOTAL_NUMBER_OF_LEDS,
   LED_BAR_STATUS_REPORTER_BRIGHTNESS);
 
 void setup() {
@@ -106,6 +107,18 @@ void loop() {
         Serial.println("Iniciando alerta visual");
         ledBarStatusReporter.startReportingStatus(numberOfLedsToLight);
       }
+
+      if (ledBarStatusReporter.allLedsOn()) {
+        if (!ledBarStatusReporter.isBlinking()) {
+          Serial.println("Iniciando blink no alerta visual");
+          ledBarStatusReporter.startBlinking(LED_BAR_STATUS_REPORTER_BLINK_INTERVAL_IN_MILLISECONDS);
+        }
+      } else {
+        if (ledBarStatusReporter.isBlinking()) {
+          Serial.println("Encerrando blink no alerta visual");
+          ledBarStatusReporter.stopBlinking();
+        }
+      }
     } else {
       if (buzzer.isAlerting()) {
         Serial.println("Encerrando alerta sonoro");
@@ -121,6 +134,7 @@ void loop() {
 
   distanceMeasurer.synchronize(currentMillis);
   buzzer.synchronize(currentMillis);
+  ledBarStatusReporter.synchronize(currentMillis);
 }
 
 int getBuzzerAlertBeatIntervalInMsFromDistanceInCm(float distanceInCm) {
