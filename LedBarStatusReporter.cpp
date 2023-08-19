@@ -41,6 +41,8 @@ void LedBarStatusReporter::setup() {
 
 void LedBarStatusReporter::begin() {
   _ledBarHandler->begin();
+
+  _updateLedBarStatusReport();
 }
 
 void LedBarStatusReporter::startReportingStatus(uint8_t numberOfLedsToLight) {
