@@ -45,6 +45,18 @@ void LedBarStatusReporter::begin() {
   _updateLedBarStatusReport();
 }
 
+bool LedBarStatusReporter::isReportingStatus() {
+  return _isReportingStatus;
+}
+
+bool LedBarStatusReporter::isBlinking() {
+  return _blinkEnabled;
+}
+
+bool LedBarStatusReporter::allLedsOn() {
+  return _numberOfLedsToLight == _totalNumberOfLeds;
+}
+
 void LedBarStatusReporter::startReportingStatus(uint8_t numberOfLedsToLight) {
   _isReportingStatus = true;
   _numberOfLedsToLight = numberOfLedsToLight;
@@ -62,15 +74,9 @@ void LedBarStatusReporter::stopReportingStatus() {
   _isReportingStatus = false;
   _numberOfLedsToLight = 0;
 
+  stopBlinking();
+
   _updateLedBarStatusReport();
-}
-
-bool LedBarStatusReporter::isReportingStatus() {
-  return _isReportingStatus;
-}
-
-bool LedBarStatusReporter::allLedsOn() {
-  return _numberOfLedsToLight == _totalNumberOfLeds;
 }
 
 void LedBarStatusReporter::startBlinking(uint16_t blinkIntervalInMilliseconds) {
@@ -85,10 +91,6 @@ void LedBarStatusReporter::stopBlinking() {
   _blinkLedsOn = false;
 
   _blinkIntervalInMilliseconds = 0;
-}
-
-bool LedBarStatusReporter::isBlinking() {
-  return _blinkEnabled;
 }
 
 void LedBarStatusReporter::synchronize(unsigned long currentMillis) {

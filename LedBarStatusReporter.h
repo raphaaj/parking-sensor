@@ -13,14 +13,14 @@ public:
   ~LedBarStatusReporter();
   static void setup();
   void begin();
+  bool isReportingStatus();
+  bool isBlinking();
+  bool allLedsOn();
   void startReportingStatus(uint8_t numberOfLedsToLight);
   void setNumberOfLedsToLight(uint8_t numberOfLedsToLight);
   void stopReportingStatus();
-  bool isReportingStatus();
-  bool allLedsOn();
   void startBlinking(uint16_t blinkIntervalInMilliseconds);
   void stopBlinking();
-  bool isBlinking();
   void synchronize(unsigned long currentMillis);
 private:
   Adafruit_NeoPixel* _ledBarHandler;
