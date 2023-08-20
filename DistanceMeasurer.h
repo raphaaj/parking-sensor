@@ -9,43 +9,27 @@ public:
   DistanceMeasurer(
     byte triggerPin,
     byte echoPin,
-    unsigned short maxDistanceInCentimeters,
-    unsigned short numberOfDistanceMeasurementsToTrackForAverage,
-    unsigned short numberOfDistanceMeasurementsToTrackForStability,
-    unsigned short distanceMeasurementsIntervalInMillisecondsForAverage,
-    unsigned short distanceMeasurementsIntervalInMillisecondsForStability,
-    float maxDistanceMeasurementStandardDeviationForStability,
-    float maxAverageSpeedInCentimetersPerSecondForStability);
+    uint16_t maxDistanceInCentimeters,
+    uint8_t numberOfDistanceMeasurementsToTrackForAverage,
+    uint16_t distanceMeasurementsIntervalInMillisecondsForAverage);
   ~DistanceMeasurer();
-  void synchronize(unsigned long currentMillis);
   bool isReady();
   float getDistanceInCentimeters();
-  float getAverageSpeedInCentimetersPerSecond();
-  bool isDistanceSteady();
+  void synchronize(unsigned long currentMillis);
 private:
   UltraSonicDistanceSensor* _distanceSensor;
-  unsigned short _maxDistanceInCentimeters;
-  unsigned short _numberOfDistanceMeasurementsToTrackForAverage;
-  unsigned short _numberOfDistanceMeasurementsToTrackForStability;
-  unsigned short _distanceMeasurementsIntervalInMillisecondsForAverage;
-  unsigned short _distanceMeasurementsIntervalInMillisecondsForStability;
-  float _maxDistanceMeasurementStandardDeviationForStability;
-  float _maxAverageSpeedInCentimetersPerSecondForStability;
+  uint16_t _maxDistanceInCentimeters;
+  uint8_t _numberOfDistanceMeasurementsToTrackForAverage;
+  uint16_t _distanceMeasurementsIntervalInMillisecondsForAverage;
   float* _distanceMeasurementsInCentimetersForAverage;
-  float* _distanceMeasurementsInCentimetersForStability;
-  unsigned short _recordNextDistanceMeasurementForAverageAtIndex;
-  unsigned short _recordNextDistanceMeasurementForStabilityAtIndex;
+  uint8_t _recordNextDistanceMeasurementForAverageAtIndex;
   unsigned long _lastDistanceMeasurementForAverageMillis;
-  unsigned long _lastDistanceMeasurementForStabilityMillis;
   bool _isReadyToReportDistance;
-  bool _isReadyToCheckDistanceStability;
   void _initializeDistanceMeasurements(
     float* distanceMeasurements,
-    unsigned short numberOfDistanceMeasurements);
+    uint8_t numberOfDistanceMeasurements);
   void _recordNextDistanceMeasurementForAverage();
-  void _recordNextDistanceMeasurementForStability();
   float _getAverageDistanceMeasurement();
-  float _getAverageSpeedInCentimetersPerSecondInStabilityTrackWindow();
 };
 
 #endif
