@@ -1,5 +1,5 @@
 #include "DistanceMeasurer.h"
-#include "Buzzer.h"
+#include "BuzzerStatusReporter.h"
 #include "LedBarStatusReporter.h"
 
 #define DISTANCE_MEASURER_TRIGGER_PIN 2
@@ -51,7 +51,7 @@ LedBarStatusReporter ledBarStatusReporter(
   LED_BAR_STATUS_REPORTER_TOTAL_NUMBER_OF_LEDS,
   LED_BAR_STATUS_REPORTER_BRIGHTNESS);
 
-Buzzer buzzer(BUZZER_PIN);
+BuzzerStatusReporter buzzerStatusReporter(BUZZER_PIN);
 
 void setup() {
   Serial.begin(9600);
@@ -60,7 +60,7 @@ void setup() {
   LedBarStatusReporter::setup();
   ledBarStatusReporter.begin();
 
-  // buzzer.alertInitialization();
+  buzzerStatusReporter.reportInitialization();
 
   Serial.println("Inicialização finalizada");
 }
@@ -75,25 +75,28 @@ void loop() {
     heartbeatPreviousMillis = currentMillis;
   }
 
-  // desabilitar status report após preparação
+  // desabilitar status report após conclusão do intervalo de preparação
   if (isPreparingToDisableStatusReport
       && currentMillis - preparationToDisableStatusReportStartMillis > TIME_FOR_PREPARATION_TO_DISABLE_STATUS_REPORT_IN_MILLISECONDS) {
-    Serial.println("Desativando alertas");
+    Serial.println("Preparação para desativação dos alertas concluída. Desativando alertas");
 
     isStatusReportEnabled = false;
     isPreparingToDisableStatusReport = false;
 
     if (ledBarStatusReporter.isReportingStatus()) {
-      Serial.println("Finalizando alerta visual");
+      Serial.println("Encerrando alerta visual");
       ledBarStatusReporter.stopReportingStatus();
     }
 
-    if (buzzer.isAlerting()) {
-      Serial.println("Finalizando alerta sonoro");
-      buzzer.stopAlerting(currentMillis);
+    if (buzzerStatusReporter.isReportingStatus()) {
+      Serial.println("Encerrando alerta sonoro");
+      buzzerStatusReporter.stopReportingStatus(currentMillis);
     }
+
+    Serial.println("Alertas desativados");
   }
 
+  // medição da distância
   if (distanceMeasurer.isReady()) {
     if (currentMillis - statusReportUpdatePreviousMillis > STATUS_REPORT_UPDATE_INTERVAL_IN_MILLISECONDS) {
       statusReportUpdatePreviousMillis = currentMillis;
@@ -104,10 +107,8 @@ void loop() {
       Serial.print(currentDistanceInCentimeters, 2);
       Serial.println(" cm");
 
-      // status report
       if (isStatusReportEnabled) {
-
-        // verificação para início da preparação para desativação do status report
+        // verificação para início do intervalo de preparação para desativação do status report
         if (currentDistanceInCentimeters < MIN_DISTANCE_IN_CENTIMETERS_TO_START_PREPARING_TO_DISABLE_STATUS_REPORT
             && !isPreparingToDisableStatusReport) {
           Serial.println("Iniciando preparação para desativação dos alertas");
@@ -118,16 +119,16 @@ void loop() {
           ledBarStatusReporter.startBlinking(LED_BAR_STATUS_REPORTER_BLINK_INTERVAL_IN_MILLISECONDS);
         }
 
-        // atualização do status
+        // atualização do status report
         if (currentDistanceInCentimeters < MIN_DISTANCE_TO_REPORT_STATUS_IN_CENTIMETERS) {
-          uint16_t buzzerAlertBeatIntervalInMs = getBuzzerAlertBeatIntervalInMsFromDistanceInCm(currentDistanceInCentimeters);
-          uint8_t numberOfLedsToLight = getNumberOfLedsToLightFromDistanceInCm(currentDistanceInCentimeters);
+          uint16_t beepIntervalInMilliseconds = getBeepIntervalInMillisecondsFromDistanceInCentimeters(currentDistanceInCentimeters);
+          uint8_t numberOfLedsToLight = getNumberOfLedsToLightFromDistanceInCentimeters(currentDistanceInCentimeters);
 
-          if (buzzer.isAlerting()) {
-            buzzer.setAlertBeatsInterval(buzzerAlertBeatIntervalInMs);
+          if (buzzerStatusReporter.isReportingStatus()) {
+            buzzerStatusReporter.setStatusReportBeepInterval(beepIntervalInMilliseconds);
           } else {
-            // Serial.println("Iniciando alerta sonoro");
-            // buzzer.startAlerting(buzzerAlertBeatIntervalInMs);
+            Serial.println("Iniciando alerta sonoro");
+            buzzerStatusReporter.startReportingStatus(beepIntervalInMilliseconds);
           }
 
           if (ledBarStatusReporter.isReportingStatus()) {
@@ -138,31 +139,35 @@ void loop() {
           }
         } else {
           if (ledBarStatusReporter.isReportingStatus()) {
-            Serial.println("Finalizando alerta visual");
+            Serial.println("Encerrando alerta visual");
             ledBarStatusReporter.stopReportingStatus();
           }
 
-          if (buzzer.isAlerting()) {
-            Serial.println("Finalizando alerta sonoro");
-            buzzer.stopAlerting(currentMillis);
+          if (buzzerStatusReporter.isReportingStatus()) {
+            Serial.println("Encerrando alerta sonoro");
+            buzzerStatusReporter.stopReportingStatus(currentMillis);
           }
         }
       } else {
         // reabilitação do status report após ter sido desabilitado
         if (currentDistanceInCentimeters > MIN_DISTANCE_IN_CENTIMETERS_TO_ENABLE_STATUS_REPORT_AFTER_BEING_DISABLED) {
           Serial.println("Reativando alertas");
+
           isStatusReportEnabled = true;
+
+          Serial.println("Alertas reativados");
         }
       }
     }
   }
 
+  // sincronização
   distanceMeasurer.synchronize(currentMillis);
-  buzzer.synchronize(currentMillis);
   ledBarStatusReporter.synchronize(currentMillis);
+  buzzerStatusReporter.synchronize(currentMillis);
 }
 
-uint16_t getBuzzerAlertBeatIntervalInMsFromDistanceInCm(float distanceInCm) {
+uint16_t getBeepIntervalInMillisecondsFromDistanceInCentimeters(float distanceInCm) {
   if (distanceInCm > 100) return 2000;
   else if (distanceInCm > 50) return 1000;
   else if (distanceInCm > 25) return 500;
@@ -170,7 +175,7 @@ uint16_t getBuzzerAlertBeatIntervalInMsFromDistanceInCm(float distanceInCm) {
   else return 125;
 }
 
-uint8_t getNumberOfLedsToLightFromDistanceInCm(float distanceInCm) {
+uint8_t getNumberOfLedsToLightFromDistanceInCentimeters(float distanceInCm) {
   if (distanceInCm > 100) return 0;
   else if (distanceInCm > 75) return 1;
   else if (distanceInCm > 50) return 2;
