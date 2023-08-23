@@ -1,5 +1,4 @@
 #include "DistanceMeasurer.h"
-#include "BuzzerStatusReporter.h"
 #include "LedBarStatusReporter.h"
 
 #define DISTANCE_MEASURER_TRIGGER_PIN 2
@@ -12,8 +11,6 @@
 #define LED_BAR_STATUS_REPORTER_TOTAL_NUMBER_OF_LEDS 8
 #define LED_BAR_STATUS_REPORTER_BRIGHTNESS 32
 #define LED_BAR_STATUS_REPORTER_BLINK_INTERVAL_IN_MILLISECONDS 350
-
-#define BUZZER_PIN 4
 
 #define HEARTBEAT_INTERVAL_IN_MILLISECONDS 1000
 
@@ -43,8 +40,6 @@ LedBarStatusReporter ledBarStatusReporter(
   LED_BAR_STATUS_REPORTER_TOTAL_NUMBER_OF_LEDS,
   LED_BAR_STATUS_REPORTER_BRIGHTNESS);
 
-BuzzerStatusReporter buzzerStatusReporter(BUZZER_PIN);
-
 void setup() {
   Serial.begin(9600);
   Serial.println("Inicializando");
@@ -54,8 +49,6 @@ void setup() {
 
   LedBarStatusReporter::setup();
   ledBarStatusReporter.begin();
-
-  buzzerStatusReporter.reportInitialization();
 
   Serial.println("Inicialização finalizada");
 }
@@ -83,11 +76,6 @@ void loop() {
     if (ledBarStatusReporter.isReportingStatus()) {
       Serial.println("Encerrando alerta visual");
       ledBarStatusReporter.stopReportingStatus();
-    }
-
-    if (buzzerStatusReporter.isReportingStatus()) {
-      Serial.println("Encerrando alerta sonoro");
-      buzzerStatusReporter.stopReportingStatus(currentMillis);
     }
 
     Serial.println("Alertas desativados");
@@ -118,15 +106,7 @@ void loop() {
 
         // atualização do status report
         if (currentDistanceInCentimeters < MIN_DISTANCE_TO_REPORT_STATUS_IN_CENTIMETERS) {
-          uint16_t beepIntervalInMilliseconds = getBeepIntervalInMillisecondsFromDistanceInCentimeters(currentDistanceInCentimeters);
           uint8_t numberOfLedsToLight = getNumberOfLedsToLightFromDistanceInCentimeters(currentDistanceInCentimeters);
-
-          if (buzzerStatusReporter.isReportingStatus()) {
-            buzzerStatusReporter.setStatusReportBeepInterval(beepIntervalInMilliseconds);
-          } else {
-            Serial.println("Iniciando alerta sonoro");
-            buzzerStatusReporter.startReportingStatus(beepIntervalInMilliseconds);
-          }
 
           if (ledBarStatusReporter.isReportingStatus()) {
             ledBarStatusReporter.setNumberOfLedsToLight(numberOfLedsToLight);
@@ -138,11 +118,6 @@ void loop() {
           if (ledBarStatusReporter.isReportingStatus()) {
             Serial.println("Encerrando alerta visual");
             ledBarStatusReporter.stopReportingStatus();
-          }
-
-          if (buzzerStatusReporter.isReportingStatus()) {
-            Serial.println("Encerrando alerta sonoro");
-            buzzerStatusReporter.stopReportingStatus(currentMillis);
           }
         }
       } else {
@@ -162,15 +137,6 @@ void loop() {
   // sincronização
   distanceMeasurer.synchronize(currentMillis);
   ledBarStatusReporter.synchronize(currentMillis);
-  buzzerStatusReporter.synchronize(currentMillis);
-}
-
-uint16_t getBeepIntervalInMillisecondsFromDistanceInCentimeters(float distanceInCm) {
-  if (distanceInCm > 100) return 2000;
-  else if (distanceInCm > 50) return 1000;
-  else if (distanceInCm > 25) return 500;
-  else if (distanceInCm > 5) return 250;
-  else return 125;
 }
 
 uint8_t getNumberOfLedsToLightFromDistanceInCentimeters(float distanceInCm) {
