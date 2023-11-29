@@ -1,7 +1,8 @@
 #ifndef LedBarStatusReporter_h
 #define LedBarStatusReporter_h
 
-//https://github.com/adafruit/Adafruit_NeoPixel
+// Adafruit_NeoPixel
+// https://github.com/adafruit/Adafruit_NeoPixel
 #include <Adafruit_NeoPixel.h>
 
 class LedBarStatusReporter {

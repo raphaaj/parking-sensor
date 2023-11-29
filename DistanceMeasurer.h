@@ -1,6 +1,7 @@
 #ifndef DistanceMeasurer_h
 #define DistanceMeasurer_h
 
+// HCSR04
 // https://github.com/Martinsos/arduino-lib-hc-sr04
 #include <HCSR04.h>
 
