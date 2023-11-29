@@ -1,13 +1,13 @@
 #include "DistanceMeasurer.h"
 #include "LedBarStatusReporter.h"
 
-#define DISTANCE_MEASURER_TRIGGER_PIN 2
-#define DISTANCE_MEASURER_ECHO_PIN 3
+#define DISTANCE_MEASURER_TRIGGER_PIN 3
+#define DISTANCE_MEASURER_ECHO_PIN 2
 #define DISTANCE_MEASURER_MAX_DISTANCE_IN_CENTIMETERS 150
 #define DISTANCE_MEASURER_NUMBER_OF_DISTANCE_MEASUREMENTS_TO_TRACK_FOR_AVERAGE 5
 #define DISTANCE_MEASURER_DISTANCE_MEASUREMENTS_INTERVAL_IN_MS_FOR_AVERAGE 100
 
-#define LED_BAR_STATUS_REPORTER_PIN 5
+#define LED_BAR_STATUS_REPORTER_PIN 4
 #define LED_BAR_STATUS_REPORTER_TOTAL_NUMBER_OF_LEDS 8
 #define LED_BAR_STATUS_REPORTER_BRIGHTNESS 32
 #define LED_BAR_STATUS_REPORTER_BLINK_INTERVAL_IN_MILLISECONDS 350
@@ -17,7 +17,7 @@
 #define MIN_DISTANCE_TO_REPORT_STATUS_IN_CENTIMETERS 100
 #define STATUS_REPORT_UPDATE_INTERVAL_IN_MILLISECONDS 250
 
-#define MIN_DISTANCE_IN_CENTIMETERS_TO_START_PREPARING_TO_DISABLE_STATUS_REPORT 5
+#define MIN_DISTANCE_IN_CENTIMETERS_TO_START_PREPARING_TO_DISABLE_STATUS_REPORT 12
 #define MIN_DISTANCE_IN_CENTIMETERS_TO_ENABLE_STATUS_REPORT_AFTER_BEING_DISABLED 100
 #define TIME_FOR_PREPARATION_TO_DISABLE_STATUS_REPORT_IN_MILLISECONDS 10000
 
@@ -143,10 +143,10 @@ uint8_t getNumberOfLedsToLightFromDistanceInCentimeters(float distanceInCm) {
   if (distanceInCm > 100) return 0;
   else if (distanceInCm > 75) return 1;
   else if (distanceInCm > 50) return 2;
-  else if (distanceInCm > 25) return 3;
-  else if (distanceInCm > 20) return 4;
-  else if (distanceInCm > 15) return 5;
-  else if (distanceInCm > 10) return 6;
-  else if (distanceInCm > 5) return 7;
+  else if (distanceInCm > 30) return 3;
+  else if (distanceInCm > 25) return 4;
+  else if (distanceInCm > 20) return 5;
+  else if (distanceInCm > 16) return 6;
+  else if (distanceInCm > 12) return 7;
   else return 8;
 }
